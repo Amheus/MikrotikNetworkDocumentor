@@ -1,22 +1,29 @@
 import json
 
 from common.enumerators.device_type import DeviceType
+from common.service_interactions.opnsense.opnsense_vlan_control import OPNSenseVLANControl
 from common.service_interactions.opnsense_device import OPNSenseDevice
-from common.service_interactions.mikrotik.capsman import CAPsMAN
+from common.service_interactions.mikrotik.mikrotik_capsman_control import CAPsMAN
 from common.utilities.configuration import Configuration
 from common.service_interactions.mikrotik_device import MikrotikDevice
 
 
 def go(network_devices) -> None:
     network_spec = {
-        "VLANs": {},
+        "VLANs": [],
         "CAPsMAN": {},
     }
 
     for device in network_devices:
         if "VlanController" in device.DEVICE_CONFIG["Roles"]:
-            network_spec["VLANs"] = {}
+            if device.DEVICE_CONFIG["Type"] == "MikroTIK":
+                raise NotImplementedError("Mikrotik VLANs not yet implemented")
+            elif device.DEVICE_CONFIG["Type"] == "OPNSense":
+                network_spec["VLANs"] = OPNSenseVLANControl(device).get_vlan_config()
+
         if "CAPsMAN" in device.DEVICE_CONFIG["Roles"]:
+            if device.DEVICE_CONFIG["Type"] != "MikroTIK":
+                raise Exception("CAPsMAN is a MikroTIK-only feature")
             network_spec["CAPsMAN"] = CAPsMAN(device).build_payload()
 
 

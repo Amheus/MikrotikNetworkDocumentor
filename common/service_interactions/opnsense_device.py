@@ -1,3 +1,4 @@
+from xml.dom.minidom import Element
 from xml.etree import ElementTree
 
 from opn_api.api.client import OPNAPIClient, OPNsenseClientConfig
@@ -12,7 +13,7 @@ class OPNSenseDevice(NetworkDevice):
     def __init__(self, device_key: str):
         super().__init__(device_key)
 
-        device_details = Configuration.get("NetworkDevices", device_key)
+        device_details = Configuration.get("NetworkDevices",  device_key)
 
         connection_details = device_details["Connection"]
 
@@ -25,6 +26,7 @@ class OPNSenseDevice(NetworkDevice):
 
         self._API_: OPNAPIClient | None = None
         self._CLIENT_: OPNFirewallClient | None = None
+        self._CONFIGURATION_: Element|None = None
 
     @property
     def is_connected(self) -> bool:
@@ -52,20 +54,31 @@ class OPNSenseDevice(NetworkDevice):
         return True
 
     def disconnect(self) -> bool:
+        self._CONFIGURATION_ = None
         self._CLIENT_ = None
         self._API_ = None
 
         return True
 
-    def verify_name(self, name: str) -> bool:
+    def get_configuration(
+            self,
+            refresh: bool = False
+    ) -> Element | None:
         if self._API_ is None:
-            return False
+            raise RuntimeError("OPNsense device is not connected")
 
-        backup = Backup(self._API_)
-        configuration = backup.download("this")
+        if self._CONFIGURATION_ is None or refresh:
+            backup = Backup(self._API_)
+            configuration = backup.download("this")
 
-        root = ElementTree.fromstring(configuration)
+            self._CONFIGURATION_ = ElementTree.fromstring(configuration)
+
+        return self._CONFIGURATION_
+
+    def verify_name(self, name: str) -> bool:
+        root = self.get_configuration()
 
         hostname = root.findtext("./system/hostname")
 
         return hostname == name
+
