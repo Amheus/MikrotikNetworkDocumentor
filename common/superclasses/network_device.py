@@ -3,10 +3,13 @@ from common.utilities.configuration import Configuration
 
 
 class NetworkDevice:
-    def __init__(self, device_key: str):
-        device_details = Configuration.get("NetworkDevices", device_key)
 
-        if device_details is None:
+    DEVICE_CONFIG: dict|None = None
+
+    def __init__(self, device_key: str):
+        self.DEVICE_CONFIG = Configuration.get("NetworkDevices", device_key)
+
+        if self.DEVICE_CONFIG is None:
             raise Exception(f"Device {device_key} not found in configuration")
 
     def connect(self) -> bool:

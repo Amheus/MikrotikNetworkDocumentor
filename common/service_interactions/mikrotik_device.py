@@ -11,7 +11,7 @@ class MikrotikDevice(NetworkDevice):
         device_details = Configuration.get("NetworkDevices", device_key)
         connection_details = device_details["Connection"]
 
-        self.connection = routeros_api.RouterOsApiPool(
+        self._CONNECTION_ = routeros_api.RouterOsApiPool(
             connection_details["IP"],
             username=connection_details["Username"],
             password=connection_details["Password"],
@@ -23,22 +23,32 @@ class MikrotikDevice(NetworkDevice):
             ssl_context=connection_details["SslContext"],
         )
 
-        self.api = None
+        self._API_ = None
+
+    @property
+    def is_connected(self) -> bool:
+        return self._API_ is not None
 
     def connect(self) -> bool:
-        self.api = self.connection.get_api()
-        return self.api is not None
+        self._API_ = self._CONNECTION_.get_api()
+        return self._API_ is not None
 
     def disconnect(self) -> bool:
-        self.connection.disconnect()
-        self.api = None
+        self._CONNECTION_.disconnect()
+        self._API_ = None
         return True
 
-    def verify_name(self, name: str) -> bool:
-        if self.api is None:
-            return False
+    def get_resource(self, path: str):
+        if self._API_ is None:
+            raise RuntimeError("MikroTik device is not connected")
 
-        identities = self.api.get_resource("/system/identity").get()
+        return self._API_.get_resource(path)
+
+    def get_resource_data(self, path: str, **filters) -> list[dict]:
+        return self.get_resource(path).get(**filters)
+
+    def verify_name(self, name: str) -> bool:
+        identities = self.get_resource_data("/system/identity")
 
         if not identities:
             return False

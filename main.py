@@ -1,7 +1,22 @@
+import json
+
 from common.enumerators.device_type import DeviceType
+from common.service_interactions.mikrotik.capsman import CAPsMAN
 from common.utilities.configuration import Configuration
 from common.service_interactions.mikrotik_device import MikrotikDevice
-from common.superclasses.network_device import NetworkDevice
+
+
+def go(network_devices) -> None:
+
+    network_spec = {
+        "CAPsMAN": None
+    }
+
+    for device in network_devices:
+        if "CAPsMAN" in device.DEVICE_CONFIG["Roles"]:
+            capsman = CAPsMAN(device)
+            data = capsman.build_payload()
+            print(json.dumps(data))
 
 
 def main() -> None:
@@ -9,7 +24,7 @@ def main() -> None:
 
     devices_config = Configuration.get("NetworkDevices")
 
-    network: list[NetworkDevice] = []
+    network_devices: list[MikrotikDevice] = []
 
     print("Connecting to devices...")
 
@@ -20,26 +35,35 @@ def main() -> None:
             if device_type == DeviceType.MikroTIK.value:
                 device = MikrotikDevice(device_name)
             else:
-                print(f"    {device_name} - UNSUPPORTED ({device_type})")
+                print(
+                    f"    {device_name} - UNSUPPORTED ({device_type})"
+                )
                 continue
 
             print(f"    {device_name}", end="")
 
             if not device.connect():
-                raise RuntimeError(f"Failed to connect to {device_name}")
+                raise RuntimeError(
+                    f"Failed to connect to {device_name}"
+                )
 
             if not device.verify_name(device_name):
                 device.disconnect()
-                raise RuntimeError(f"Device {device_name} is not the expected device")
+                raise RuntimeError(
+                    f"Device {device_name} is not the expected device"
+                )
 
-            network.append(device)
+            network_devices.append(device)
 
             print(" - CONNECTED")
+
+        print("Collecting network information...")
+        go(network_devices)
 
     finally:
         print("Disconnecting from devices...")
 
-        for device in network:
+        for device in network_devices:
             device.disconnect()
 
         print("Done :3")
