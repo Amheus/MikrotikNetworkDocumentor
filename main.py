@@ -1,7 +1,7 @@
 import json
 
 from common.enumerators.device_type import DeviceType
-from common.service_interactions.OPNSenseDevice import OPNSenseDevice
+from common.service_interactions.opnsense_device import OPNSenseDevice
 from common.service_interactions.mikrotik.capsman import CAPsMAN
 from common.utilities.configuration import Configuration
 from common.service_interactions.mikrotik_device import MikrotikDevice
