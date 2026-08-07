@@ -1,22 +1,24 @@
 import json
 
 from common.enumerators.device_type import DeviceType
+from common.service_interactions.OPNSenseDevice import OPNSenseDevice
 from common.service_interactions.mikrotik.capsman import CAPsMAN
 from common.utilities.configuration import Configuration
 from common.service_interactions.mikrotik_device import MikrotikDevice
 
 
 def go(network_devices) -> None:
-
     network_spec = {
-        "CAPsMAN": None
+        "VLANs": {},
+        "CAPsMAN": {},
     }
 
     for device in network_devices:
+        if "VlanController" in device.DEVICE_CONFIG["Roles"]:
+            network_spec["VLANs"] = {}
         if "CAPsMAN" in device.DEVICE_CONFIG["Roles"]:
-            capsman = CAPsMAN(device)
-            data = capsman.build_payload()
-            print(json.dumps(data))
+            network_spec["CAPsMAN"] = CAPsMAN(device).build_payload()
+
 
 
 def main() -> None:
@@ -24,7 +26,10 @@ def main() -> None:
 
     devices_config = Configuration.get("NetworkDevices")
 
-    network_devices: list[MikrotikDevice] = []
+    network_devices: list[
+        MikrotikDevice
+        |OPNSenseDevice
+    ] = []
 
     print("Connecting to devices...")
 
@@ -34,6 +39,8 @@ def main() -> None:
 
             if device_type == DeviceType.MikroTIK.value:
                 device = MikrotikDevice(device_name)
+            elif device_type == DeviceType.OPNSense.value:
+                device = OPNSenseDevice(device_name)
             else:
                 print(
                     f"    {device_name} - UNSUPPORTED ({device_type})"
