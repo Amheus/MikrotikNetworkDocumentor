@@ -1,0 +1,5 @@
+
+pyyaml==6.0.3
+
+RouterOS-api==0.21.0
+opn-api==0.5.0
