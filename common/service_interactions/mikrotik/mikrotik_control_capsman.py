@@ -1,7 +1,7 @@
 from common.service_interactions.mikrotik_device import MikrotikDevice
 
 
-class CAPsMAN:
+class MikrotikControlCapsman:
     def __init__(self, mikrotik_device: MikrotikDevice):
         if not isinstance(mikrotik_device, MikrotikDevice):
             raise TypeError(

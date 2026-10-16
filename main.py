@@ -1,31 +1,57 @@
 import json
 
 from common.enumerators.device_type import DeviceType
-from common.service_interactions.opnsense.opnsense_vlan_control import OPNSenseVLANControl
+from common.latex.document_generator import DocumentGenerator
+from common.service_interactions.mikrotik.mikrotik_control_dhcp_server import MikrotikControlDhcpServer
+from common.service_interactions.mikrotik.mikrotik_control_firewall_ipv4 import MikrotikControlFirewallIpv4
+from common.service_interactions.mikrotik.mikrotik_control_vlan import MikrotikControlVlan
+from common.service_interactions.opnsense.opnsense_control_vlan import OpnsenseControlVlan
 from common.service_interactions.opnsense_device import OPNSenseDevice
-from common.service_interactions.mikrotik.mikrotik_capsman_control import CAPsMAN
+from common.service_interactions.mikrotik.mikrotik_control_capsman import MikrotikControlCapsman
 from common.utilities.configuration import Configuration
 from common.service_interactions.mikrotik_device import MikrotikDevice
 
 
-def go(network_devices) -> None:
+def gather_network_information(network_devices) -> dict:
     network_spec = {
-        "VLANs": [],
+        "VLANs": {},
+        "Firewall": {},
+        "DHCP": {},
         "CAPsMAN": {},
     }
 
     for device in network_devices:
         if "VlanController" in device.DEVICE_CONFIG["Roles"]:
             if device.DEVICE_CONFIG["Type"] == "MikroTIK":
-                raise NotImplementedError("Mikrotik VLANs not yet implemented")
+                network_spec["VLANs"] = MikrotikControlVlan(device).build_payload()
             elif device.DEVICE_CONFIG["Type"] == "OPNSense":
-                network_spec["VLANs"] = OPNSenseVLANControl(device).get_vlan_config()
+                network_spec["VLANs"] = {"": OpnsenseControlVlan(device).build_payload()}
+
+        if "Firewall" in device.DEVICE_CONFIG["Roles"]:
+            if device.DEVICE_CONFIG["Type"] == "MikroTIK":
+                network_spec["Firewall"] = MikrotikControlFirewallIpv4(device).build_payload()
+            else:
+                raise Exception(f"Firewall is not implemented for {device.DEVICE_CONFIG['Type']} yet.")
+
+        if "DhcpServer" in device.DEVICE_CONFIG["Roles"]:
+            if device.DEVICE_CONFIG["Type"] == "MikroTIK":
+                network_spec["DHCP"] = MikrotikControlDhcpServer(device).build_payload()
+            else:
+                raise Exception(f"DhcpServer is not implemented for {device.DEVICE_CONFIG['Type']} yet.")
 
         if "CAPsMAN" in device.DEVICE_CONFIG["Roles"]:
             if device.DEVICE_CONFIG["Type"] != "MikroTIK":
                 raise Exception("CAPsMAN is a MikroTIK-only feature")
-            network_spec["CAPsMAN"] = CAPsMAN(device).build_payload()
+            network_spec["CAPsMAN"] = MikrotikControlCapsman(device).build_payload()
 
+    return network_spec
+
+
+def generate_document(network_spec: dict) -> None:
+    with open("cache/network_spec.json", "w") as f:
+        f.write(
+            json.dumps(network_spec, indent=4)
+        )
 
 
 def main() -> None:
@@ -72,7 +98,10 @@ def main() -> None:
             print(" - CONNECTED")
 
         print("Collecting network information...")
-        go(network_devices)
+        network_spec = gather_network_information(network_devices)
+
+        print("Generating document...")
+        generate_document(network_spec)
 
     finally:
         print("Disconnecting from devices...")

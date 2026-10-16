@@ -1,3 +1,5 @@
+from typing import Any
+
 import routeros_api
 
 from common.utilities.configuration import Configuration
@@ -38,7 +40,7 @@ class MikrotikDevice(NetworkDevice):
         self._API_ = None
         return True
 
-    def get_resource(self, path: str):
+    def get_resource(self, path: str) -> Any:
         if self._API_ is None:
             raise RuntimeError("MikroTik device is not connected")
 
